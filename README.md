@@ -42,6 +42,7 @@ $ sudo ./zenstates.py --no-gui [args...]
       --c6-enable           Enable C-State C6
       --c6-disable          Disable C-State C6
       --smu-test-message    Send test message to the SMU (response 1 means 'success')
+      --lock-freq           Lock frequency for better perf
       --oc-frequency        Set Overclock frequency (in MHz)
       --oc-vid              Set Overclock VID (in hex)
       --ppt                 Set PPT limit (in W)
