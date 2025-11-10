@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import struct
 import os
 import glob
@@ -304,6 +304,7 @@ parser.add_argument('--c6-disable', action='store_true', help='Disable C-State C
 parser.add_argument('--smu-test-message', action='store_true', help='Send test message to the SMU (response 1 means "success")')
 parser.add_argument('--oc-enable', action='store_true', help='Enable OC')
 parser.add_argument('--oc-disable', action='store_true', help='Disable OC')
+parser.add_argument('--lock-freq', action='store_true', help='Lock frequency')
 parser.add_argument('--oc-frequency', default=550, type=int, help='Set overclock frequency (in MHz)')
 parser.add_argument('--oc-vid', default=-1, type=hex, help='Set overclock VID')
 parser.add_argument('--ppt', default=-1, type=int, help='Set PPT limit (in W)')
@@ -376,17 +377,25 @@ elif _cpuid == 0x00800F82:
         SMU_CMD_OC_VID = 0x6E
         SMU_CMD_GET_PBO_SCALAR = 0x6F
 
-# Zen 2 | Matisse, Rome, Castle Peak
+# Zen 2 | Matisse, Rome, Castle Peak, Milan
 # Zen 3 | Vermeer
-elif _cpuid in [0x00870F10, 0x00870F00, 0x00830F00, 0x00830F10, 0x00A20F00, 0x00A20F10]:
+elif _cpuid in [0x00870F10, 0x00870F00, 0x00830F00, 0x00830F10, 0x00A20F00, 0x00A20F10, 0x00A00F00, 0x00A00F10]:
     SMU_CMD_ADDR = 0x03B10524
     SMU_RSP_ADDR = 0x03B10570
     SMU_ARG_ADDR = 0x03B10A40
     isOcFreqSupported = True
+    
 
     if _pkgtype == 7: # Rome ES
         SMU_CMD_OC_FREQ_ALL_CORES = 0x18
         SMU_CMD_OC_VID = 0x12
+        SMU_CMD_LOCK_FREQ = 0x24
+    if _pkgtype == 4: # Milan ES
+        SMU_CMD_OC_FREQ_ALL_CORES = 0x18
+        SMU_CMD_OC_VID = 0x12
+        SMU_CMD_LOCK_FREQ = 0x24
+        SMU_CMD_RESET_DEFAULT_VOLTAGE = 0x13
+        isMilanES = True
     else:
         SMU_CMD_OC_ENABLE = 0x5A
         SMU_CMD_OC_DISABLE = 0x5B
@@ -430,6 +439,7 @@ if args.list:
     print('C6 State - Package - ' +
           ('Enabled' if getC6package() else 'Disabled'))
     print('C6 State - Core - ' + ('Enabled' if getC6core() else 'Disabled'))
+    
 
 if args.pstate >= 0:
     new = old = readmsr(PSTATES[args.pstate])
@@ -478,6 +488,13 @@ if args.oc_enable:
     else:
         print('OC Mode not supported')
 
+if args.lock_freq:
+    if SMU_CMD_LOCK_FREQ:
+        writesmu(SMU_CMD_LOCK_FREQ, 0x00000001)
+        print('Lock Freq')
+    else:
+        print('Lock Freq only tested on Milan and ROME, so i disabled on others')
+        
 if args.oc_disable:
     if isOcFreqSupported:
         writesmu(SMU_CMD_OC_DISABLE)
@@ -493,18 +510,19 @@ if args.oc_frequency > 550:
     writesmu(SMU_CMD_OC_FREQ_ALL_CORES, args.oc_frequency)
     print('Set OC frequency to %sMHz' % args.oc_frequency)
 
-if args.ppt > -1:
-    setPPT(args.ppt)
-    print('Set PPT to %sW' % args.ppt)
+if args.edc > -1:
+    setEDC(args.edc)
+    print('Set EDC to %sA' % args.edc)
+
 
 if args.tdc > -1:
     setTDC(args.tdc)
     print('Set TDC to %sA' % args.tdc)
 
-if args.edc > -1:
-    setEDC(args.edc)
-    print('Set EDC to %sA' % args.edc)
 
+if args.ppt > -1:
+    setPPT(args.ppt)
+    print('Set PPT to %sW' % args.ppt)
 
 ###############################
 # GUI
